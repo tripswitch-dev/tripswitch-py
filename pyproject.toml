@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tripswitch"
+name = "tripswitch-py"
 version = "0.1.0"
 description = "Official Python SDK for the Tripswitch circuit breaker service"
 license = "Apache-2.0"
@@ -31,6 +31,9 @@ dependencies = [
 [project.urls]
 "Bug Tracker" = "https://github.com/tripswitch-dev/tripswitch-py/issues"
 "Changelog" = "https://github.com/tripswitch-dev/tripswitch-py/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tripswitch"]
 
 [project.optional-dependencies]
 dev = [

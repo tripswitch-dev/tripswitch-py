@@ -1,7 +1,7 @@
 # tripswitch-py
 
-[![PyPI](https://img.shields.io/pypi/v/tripswitch)](https://pypi.org/project/tripswitch/)
-[![Python](https://img.shields.io/pypi/pyversions/tripswitch)](https://pypi.org/project/tripswitch/)
+[![PyPI](https://img.shields.io/pypi/v/tripswitch-py)](https://pypi.org/project/tripswitch-py/)
+[![Python](https://img.shields.io/pypi/pyversions/tripswitch-py)](https://pypi.org/project/tripswitch-py/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 Official Python SDK for [Tripswitch](https://tripswitch.dev) — a circuit breaker management service.
@@ -19,7 +19,7 @@ This SDK conforms to the [Tripswitch SDK Contract v0.2](https://tripswitch.dev/d
 ## Installation
 
 ```bash
-pip install tripswitch
+pip install tripswitch-py
 ```
 
 **Requires Python 3.10+**
