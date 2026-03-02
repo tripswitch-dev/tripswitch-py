@@ -22,9 +22,15 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
+homepage = "https://tripswitch.dev"
+repository = "https://github.com/tripswitch-dev/tripswitch-py"
 dependencies = [
     "httpx>=0.24",
 ]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/tripswitch-dev/tripswitch-py/issues"
+"Changelog" = "https://github.com/tripswitch-dev/tripswitch-py/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
