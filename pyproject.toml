@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "tripswitch-py"
 version = "0.2.0"
 description = "Official Python SDK for the Tripswitch circuit breaker service"
+readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [
