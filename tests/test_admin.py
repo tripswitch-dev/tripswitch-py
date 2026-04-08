@@ -50,6 +50,18 @@ from tripswitch.errors import (
 )
 
 
+# ── Public API ───────────────────────────────────────────────────────────
+
+
+def test_public_api_imports():
+    from tripswitch.admin import (
+        Workspace,
+        CreateWorkspaceInput,
+        ListProjectsResponse,
+        ListWorkspacesResponse,
+    )
+
+
 # ── Type serialization ───────────────────────────────────────────────────
 
 
