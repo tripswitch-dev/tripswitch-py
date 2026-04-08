@@ -333,9 +333,13 @@ class TestAdminClientProjects:
                 "project_id": "p1", "name": "Prod"
             })
         )
+        delete_route = respx.delete(f"{BASE}/v1/projects/p1").mock(
+            return_value=httpx.Response(204)
+        )
         client = AdminClient(api_key="k")
         with pytest.raises(ValueError, match="does not match"):
             client.delete_project("p1", confirm_name="wrong-name")
+        assert not delete_route.called
 
     @respx.mock
     def test_delete_project_success(self):

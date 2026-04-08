@@ -134,7 +134,7 @@ class AdminClient:
         Requires *confirm_name* to match the workspace's actual name as a
         safety guard against accidental deletion.
         """
-        ws = self.get_workspace(workspace_id)
+        ws = self.get_workspace(workspace_id, options=options)
         self._confirm_name("workspace", ws.name, confirm_name)
         self._do("DELETE", f"/v1/workspaces/{workspace_id}", options=options)
 
@@ -188,7 +188,7 @@ class AdminClient:
         Requires *confirm_name* to match the project's actual name as a
         safety guard against accidental deletion.
         """
-        proj = self.get_project(project_id)
+        proj = self.get_project(project_id, options=options)
         self._confirm_name("project", proj.name, confirm_name)
         self._do("DELETE", f"/v1/projects/{project_id}", options=options)
 
