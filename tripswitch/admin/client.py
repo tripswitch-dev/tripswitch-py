@@ -126,13 +126,20 @@ class AdminClient:
         return Workspace._from_dict(data)
 
     def delete_workspace(
-        self, workspace_id: str, *, options: RequestOptions | None = None,
+        self, workspace_id: str, *, confirm_name: str,
+        options: RequestOptions | None = None,
     ) -> None:
         """Delete a workspace.
 
-        Unlike :meth:`delete_project`, the workspace API does not require a
-        name-confirmation parameter.
+        Requires *confirm_name* to match the workspace's actual name as a
+        safety guard against accidental deletion.
         """
+        ws = self.get_workspace(workspace_id, options=options)
+        if ws.name != confirm_name:
+            raise ValueError(
+                f"workspace name {ws.name!r} does not match "
+                f"confirmation {confirm_name!r}"
+            )
         self._do("DELETE", f"/v1/workspaces/{workspace_id}", options=options)
 
     # ── Projects ─────────────────────────────────────────────────────────

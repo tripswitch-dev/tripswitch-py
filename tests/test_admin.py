@@ -284,7 +284,7 @@ class TestAdminClientProjects:
         )
         client = AdminClient(api_key="k")
         client.list_projects()
-        assert "workspace_id" not in route.calls[0].request.url.params
+        assert not route.calls[0].request.url.params
 
     @respx.mock
     def test_list_projects_with_workspace_id(self):
@@ -314,7 +314,7 @@ class TestAdminClientProjects:
 
     @respx.mock
     def test_create_project(self):
-        respx.post(f"{BASE}/v1/projects").mock(
+        route = respx.post(f"{BASE}/v1/projects").mock(
             return_value=httpx.Response(200, json={
                 "project_id": "p_new", "name": "New", "workspace_id": "ws_1",
             })
@@ -323,6 +323,8 @@ class TestAdminClientProjects:
         p = client.create_project(CreateProjectInput(name="New", workspace_id="ws_1"))
         assert p.name == "New"
         assert p.workspace_id == "ws_1"
+        body = json.loads(route.calls[0].request.content)
+        assert body["workspace_id"] == "ws_1"
 
     @respx.mock
     def test_delete_project_requires_confirmation(self):
@@ -630,10 +632,26 @@ class TestAdminClientWorkspaces:
         assert w.name == "Renamed"
 
     @respx.mock
-    def test_delete_workspace(self):
+    def test_delete_workspace_requires_confirmation(self):
+        respx.get(f"{BASE}/v1/workspaces/ws_1").mock(
+            return_value=httpx.Response(200, json={
+                "id": "ws_1", "name": "Alpha", "slug": "alpha",
+            })
+        )
+        client = AdminClient(api_key="k")
+        with pytest.raises(ValueError, match="does not match"):
+            client.delete_workspace("ws_1", confirm_name="wrong-name")
+
+    @respx.mock
+    def test_delete_workspace_success(self):
+        respx.get(f"{BASE}/v1/workspaces/ws_1").mock(
+            return_value=httpx.Response(200, json={
+                "id": "ws_1", "name": "Alpha", "slug": "alpha",
+            })
+        )
         route = respx.delete(f"{BASE}/v1/workspaces/ws_1").mock(
             return_value=httpx.Response(204)
         )
         client = AdminClient(api_key="k")
-        client.delete_workspace("ws_1")
+        client.delete_workspace("ws_1", confirm_name="Alpha")
         assert route.called

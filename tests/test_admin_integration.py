@@ -94,14 +94,14 @@ def test_integration_workspace_crud():
             assert any(w.id == ws.id for w in result.workspaces)
 
             # Delete
-            client.delete_workspace(ws.id)
+            client.delete_workspace(ws.id, confirm_name=updated.name)
 
             # Verify deletion
             with pytest.raises(NotFoundError):
                 client.get_workspace(ws.id)
         except Exception:
             try:
-                client.delete_workspace(ws.id)
+                client.delete_workspace(ws.id, confirm_name=ws_name)
             except Exception:
                 pass
             raise
