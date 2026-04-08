@@ -324,7 +324,7 @@ class TestAdminClientProjects:
         assert p.name == "New"
         assert p.workspace_id == "ws_1"
         body = json.loads(route.calls[0].request.content)
-        assert body["workspace_id"] == "ws_1"
+        assert body == {"name": "New", "workspace_id": "ws_1"}
 
     @respx.mock
     def test_delete_project_requires_confirmation(self):
@@ -638,9 +638,13 @@ class TestAdminClientWorkspaces:
                 "id": "ws_1", "name": "Alpha", "slug": "alpha",
             })
         )
+        delete_route = respx.delete(f"{BASE}/v1/workspaces/ws_1").mock(
+            return_value=httpx.Response(204)
+        )
         client = AdminClient(api_key="k")
         with pytest.raises(ValueError, match="does not match"):
             client.delete_workspace("ws_1", confirm_name="wrong-name")
+        assert not delete_route.called
 
     @respx.mock
     def test_delete_workspace_success(self):

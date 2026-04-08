@@ -134,12 +134,8 @@ class AdminClient:
         Requires *confirm_name* to match the workspace's actual name as a
         safety guard against accidental deletion.
         """
-        ws = self.get_workspace(workspace_id, options=options)
-        if ws.name != confirm_name:
-            raise ValueError(
-                f"workspace name {ws.name!r} does not match "
-                f"confirmation {confirm_name!r}"
-            )
+        ws = self.get_workspace(workspace_id)
+        self._confirm_name("workspace", ws.name, confirm_name)
         self._do("DELETE", f"/v1/workspaces/{workspace_id}", options=options)
 
     # ── Projects ─────────────────────────────────────────────────────────
@@ -192,12 +188,8 @@ class AdminClient:
         Requires *confirm_name* to match the project's actual name as a
         safety guard against accidental deletion.
         """
-        proj = self.get_project(project_id, options=options)
-        if proj.name != confirm_name:
-            raise ValueError(
-                f"project name {proj.name!r} does not match "
-                f"confirmation {confirm_name!r}"
-            )
+        proj = self.get_project(project_id)
+        self._confirm_name("project", proj.name, confirm_name)
         self._do("DELETE", f"/v1/projects/{project_id}", options=options)
 
     def rotate_ingest_secret(
@@ -580,6 +572,17 @@ class AdminClient:
             "DELETE", f"/v1/projects/{project_id}/keys/{key_id}",
             options=options,
         )
+
+    # ── Internal ─────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _confirm_name(kind: str, actual: str, expected: str) -> None:
+        """Raise if *actual* does not match *expected*."""
+        if actual != expected:
+            raise ValueError(
+                f"{kind} name {actual!r} does not match "
+                f"confirmation {expected!r}"
+            )
 
     # ── Internal: HTTP ───────────────────────────────────────────────────
 

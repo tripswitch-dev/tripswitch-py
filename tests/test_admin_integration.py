@@ -77,6 +77,7 @@ def test_integration_workspace_crud():
         )
         assert ws.name == ws_name
         assert ws.slug == ws_slug
+        current_name = ws_name
 
         try:
             # Read
@@ -84,24 +85,25 @@ def test_integration_workspace_crud():
             assert fetched.name == ws_name
 
             # Update
+            current_name = f"{ws_name}-renamed"
             updated = client.update_workspace(
-                ws.id, UpdateWorkspaceInput(name=f"{ws_name}-renamed"),
+                ws.id, UpdateWorkspaceInput(name=current_name),
             )
-            assert updated.name == f"{ws_name}-renamed"
+            assert updated.name == current_name
 
             # List
             result = client.list_workspaces()
             assert any(w.id == ws.id for w in result.workspaces)
 
             # Delete
-            client.delete_workspace(ws.id, confirm_name=updated.name)
+            client.delete_workspace(ws.id, confirm_name=current_name)
 
             # Verify deletion
             with pytest.raises(NotFoundError):
                 client.get_workspace(ws.id)
         except Exception:
             try:
-                client.delete_workspace(ws.id, confirm_name=ws_name)
+                client.delete_workspace(ws.id, confirm_name=current_name)
             except Exception:
                 pass
             raise
