@@ -40,6 +40,7 @@ def _load_config() -> dict[str, str]:
     return {
         "api_key": os.environ.get("TRIPSWITCH_API_KEY", ""),
         "project_id": os.environ.get("TRIPSWITCH_PROJECT_ID", ""),
+        "workspace_id": os.environ.get("TRIPSWITCH_WORKSPACE_ID", ""),
         "base_url": os.environ.get("TRIPSWITCH_BASE_URL", "https://api.tripswitch.dev"),
     }
 
@@ -71,18 +72,22 @@ def test_integration_get_project():
 def test_integration_project_crud():
     cfg = _load_config()
     _skip_if_no_env(cfg)
+    if not cfg["workspace_id"]:
+        pytest.skip("TRIPSWITCH_WORKSPACE_ID must be set")
 
     project_name = f"integration-test-project-{time.time_ns()}"
 
     with _make_client(cfg) as client:
         # Create
-        project = client.create_project(CreateProjectInput(name=project_name))
+        project = client.create_project(
+            CreateProjectInput(name=project_name, workspace_id=cfg["workspace_id"]),
+        )
         assert project.name == project_name
 
         try:
             # List — verify it shows up
-            projects = client.list_projects()
-            assert any(p.id == project.id for p in projects)
+            result = client.list_projects()
+            assert any(p.id == project.id for p in result.projects)
 
             # Delete
             client.delete_project(project.id, confirm_name=project_name)

@@ -104,6 +104,70 @@ class ListParams:
     limit: int = 0
 
 
+# ── Workspaces ────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class Workspace:
+    """A Tripswitch workspace."""
+
+    id: str
+    name: str
+    slug: str
+    org_id: str = ""
+    inserted_at: datetime | None = None
+
+    @classmethod
+    def _from_dict(cls, d: dict[str, Any]) -> Workspace:
+        return cls(
+            id=d.get("id", ""),
+            name=d.get("name", ""),
+            slug=d.get("slug", ""),
+            org_id=d.get("org_id", ""),
+            inserted_at=_parse_dt(d, "inserted_at"),
+        )
+
+
+@dataclass
+class CreateWorkspaceInput:
+    """Fields for creating a workspace."""
+
+    name: str
+    slug: str
+
+    def _to_dict(self) -> dict[str, Any]:
+        return {"name": self.name, "slug": self.slug}
+
+
+@dataclass
+class UpdateWorkspaceInput:
+    """Fields for updating a workspace.  Only set fields are sent."""
+
+    name: str | None = None
+    slug: str | None = None
+
+    def _to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
+        _set_optional(d, "name", self.name)
+        _set_optional(d, "slug", self.slug)
+        return d
+
+
+@dataclass(frozen=True)
+class ListWorkspacesResponse:
+    """Response from listing workspaces."""
+
+    workspaces: tuple[Workspace, ...]
+
+    @classmethod
+    def _from_dict(cls, d: dict[str, Any]) -> ListWorkspacesResponse:
+        return cls(
+            workspaces=tuple(
+                Workspace._from_dict(w) for w in d.get("workspaces", [])
+            ),
+        )
+
+
 # ── Projects ─────────────────────────────────────────────────────────────
 
 
@@ -116,6 +180,7 @@ class Project:
     slack_webhook_url: str = ""
     trace_id_url_template: str = ""
     enable_signed_ingest: bool = False
+    workspace_id: str = ""
 
     @classmethod
     def _from_dict(cls, d: dict[str, Any]) -> Project:
@@ -125,6 +190,7 @@ class Project:
             slack_webhook_url=d.get("slack_webhook_url", ""),
             trace_id_url_template=d.get("trace_id_url_template", ""),
             enable_signed_ingest=d.get("enable_signed_ingest", False),
+            workspace_id=d.get("workspace_id", ""),
         )
 
 
@@ -133,9 +199,30 @@ class CreateProjectInput:
     """Fields for creating a project."""
 
     name: str
+    workspace_id: str = ""
 
     def _to_dict(self) -> dict[str, Any]:
-        return {"name": self.name}
+        d: dict[str, Any] = {"name": self.name}
+        if self.workspace_id:
+            d["workspace_id"] = self.workspace_id
+        return d
+
+
+@dataclass(frozen=True)
+class ListProjectsResponse:
+    """Response from listing projects."""
+
+    projects: tuple[Project, ...]
+    count: int = 0
+
+    @classmethod
+    def _from_dict(cls, d: dict[str, Any]) -> ListProjectsResponse:
+        return cls(
+            projects=tuple(
+                Project._from_dict(p) for p in d.get("projects", [])
+            ),
+            count=d.get("count", 0),
+        )
 
 
 @dataclass
