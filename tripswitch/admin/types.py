@@ -745,6 +745,7 @@ def _parse_dt(d: dict[str, Any], key: str) -> datetime | None:
     if not raw:
         return None
     try:
-        return datetime.fromisoformat(raw)
+        # Python <3.11 doesn't accept "Z" in fromisoformat
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return None
