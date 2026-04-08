@@ -537,6 +537,18 @@ class TestWorkspaceDeserialization:
         assert w.id == ""
 
 
+class TestListWorkspacesResponse:
+    def test_from_dict_ignores_extra_keys(self):
+        """Regression guard: API doesn't return count, but handle it gracefully."""
+        d = {
+            "workspaces": [{"id": "ws_1", "name": "A", "slug": "a"}],
+            "count": 99,
+        }
+        resp = ListWorkspacesResponse._from_dict(d)
+        assert len(resp.workspaces) == 1
+        assert not hasattr(resp, "count")
+
+
 class TestCreateWorkspaceInput:
     def test_to_dict(self):
         inp = CreateWorkspaceInput(name="Dev", slug="dev")
@@ -557,6 +569,15 @@ class TestUpdateWorkspaceInput:
 
 class TestAdminClientWorkspaces:
     @respx.mock
+    def test_list_workspaces_sends_no_query(self):
+        route = respx.get(f"{BASE}/v1/workspaces").mock(
+            return_value=httpx.Response(200, json={"workspaces": []})
+        )
+        client = AdminClient(api_key="k")
+        client.list_workspaces()
+        assert not route.calls[0].request.url.params
+
+    @respx.mock
     def test_list_workspaces(self):
         respx.get(f"{BASE}/v1/workspaces").mock(
             return_value=httpx.Response(200, json={
@@ -569,6 +590,7 @@ class TestAdminClientWorkspaces:
         client = AdminClient(api_key="k")
         result = client.list_workspaces()
         assert isinstance(result, ListWorkspacesResponse)
+        assert isinstance(result.workspaces, tuple)
         assert len(result.workspaces) == 2
         assert result.workspaces[0].id == "ws_1"
         assert result.workspaces[1].slug == "beta"

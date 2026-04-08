@@ -119,6 +119,8 @@ class Workspace:
 
     @classmethod
     def _from_dict(cls, d: dict[str, Any]) -> Workspace:
+        # The workspace API consistently uses "id" — no "workspace_id"
+        # dual-key unlike the project API (which returns "project_id").
         return cls(
             id=d.get("id", ""),
             name=d.get("name", ""),
@@ -239,14 +241,10 @@ class UpdateProjectInput:
 
     def _to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {}
-        if self.name is not None:
-            d["name"] = self.name
-        if self.slack_webhook_url is not None:
-            d["slack_webhook_url"] = self.slack_webhook_url
-        if self.trace_id_url_template is not None:
-            d["trace_id_url_template"] = self.trace_id_url_template
-        if self.enable_signed_ingest is not None:
-            d["enable_signed_ingest"] = self.enable_signed_ingest
+        _set_optional(d, "name", self.name)
+        _set_optional(d, "slack_webhook_url", self.slack_webhook_url)
+        _set_optional(d, "trace_id_url_template", self.trace_id_url_template)
+        _set_optional(d, "enable_signed_ingest", self.enable_signed_ingest)
         return d
 
 
