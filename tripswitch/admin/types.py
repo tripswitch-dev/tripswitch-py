@@ -155,7 +155,11 @@ class UpdateWorkspaceInput:
 
 @dataclass(frozen=True)
 class ListWorkspacesResponse:
-    """Response from listing workspaces."""
+    """Response from listing workspaces.
+
+    Unlike :class:`ListProjectsResponse`, the workspace list endpoint does
+    not return a ``count`` field — this matches the upstream API spec.
+    """
 
     workspaces: tuple[Workspace, ...]
 
@@ -199,12 +203,11 @@ class CreateProjectInput:
     """Fields for creating a project."""
 
     name: str
-    workspace_id: str = ""
+    workspace_id: str | None = None
 
     def _to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"name": self.name}
-        if self.workspace_id:
-            d["workspace_id"] = self.workspace_id
+        _set_optional(d, "workspace_id", self.workspace_id)
         return d
 
 

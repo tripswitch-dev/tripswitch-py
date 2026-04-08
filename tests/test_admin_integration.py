@@ -66,8 +66,9 @@ def test_integration_workspace_crud():
     cfg = _load_config()
     _skip_if_no_env(cfg)
 
-    ws_name = f"integration-test-ws-{time.time_ns()}"
-    ws_slug = f"int-test-{time.time_ns()}"
+    ts = time.time_ns()
+    ws_name = f"integration-test-ws-{ts}"
+    ws_slug = f"int-test-{ts}"
 
     with _make_client(cfg) as client:
         # Create

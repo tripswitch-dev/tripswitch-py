@@ -128,7 +128,11 @@ class AdminClient:
     def delete_workspace(
         self, workspace_id: str, *, options: RequestOptions | None = None,
     ) -> None:
-        """Delete a workspace."""
+        """Delete a workspace.
+
+        Unlike :meth:`delete_project`, the workspace API does not require a
+        name-confirmation parameter.
+        """
         self._do("DELETE", f"/v1/workspaces/{workspace_id}", options=options)
 
     # ── Projects ─────────────────────────────────────────────────────────

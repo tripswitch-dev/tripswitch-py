@@ -276,6 +276,17 @@ class TestAdminClientProjects:
         assert result.count == 2
 
     @respx.mock
+    def test_list_projects_sends_no_query_by_default(self):
+        route = respx.get(f"{BASE}/v1/projects").mock(
+            return_value=httpx.Response(200, json={
+                "projects": [], "count": 0,
+            })
+        )
+        client = AdminClient(api_key="k")
+        client.list_projects()
+        assert "workspace_id" not in route.calls[0].request.url.params
+
+    @respx.mock
     def test_list_projects_with_workspace_id(self):
         route = respx.get(f"{BASE}/v1/projects").mock(
             return_value=httpx.Response(200, json={
@@ -521,6 +532,10 @@ class TestWorkspaceDeserialization:
         assert w.org_id == ""
         assert w.inserted_at is None
 
+    def test_from_dict_missing_id(self):
+        w = Workspace._from_dict({"name": "W", "slug": "w"})
+        assert w.id == ""
+
 
 class TestCreateWorkspaceInput:
     def test_to_dict(self):
@@ -556,6 +571,7 @@ class TestAdminClientWorkspaces:
         assert isinstance(result, ListWorkspacesResponse)
         assert len(result.workspaces) == 2
         assert result.workspaces[0].id == "ws_1"
+        assert result.workspaces[1].slug == "beta"
 
     @respx.mock
     def test_create_workspace(self):
