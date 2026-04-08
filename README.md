@@ -386,11 +386,28 @@ The `admin` module provides a client for management and automation tasks. This i
 from tripswitch.admin import AdminClient
 
 with AdminClient(api_key="eb_admin_...") as client:
-    # List all projects
-    projects = client.list_projects()
+    # List all workspaces
+    workspaces = client.list_workspaces()
 
-    # Create a project
+    # Create a workspace
+    workspace = client.create_workspace(CreateWorkspaceInput(name="acme", slug="acme"))
+
+    # Get workspace details
+    workspace = client.get_workspace("ws_abc123")
+
+    # Update a workspace
+    workspace = client.update_workspace("ws_abc123", UpdateWorkspaceInput(name="acme-corp"))
+
+    # Delete a workspace (requires name confirmation as a safety guard)
+    client.delete_workspace("ws_abc123", confirm_name="acme-corp")
+
+    # List all projects (optionally filter by workspace)
+    projects = client.list_projects()
+    projects = client.list_projects(workspace_id="ws_abc123")
+
+    # Create a project (optionally assign to a workspace)
     project = client.create_project(CreateProjectInput(name="prod-payments"))
+    project = client.create_project(CreateProjectInput(name="prod-payments", workspace_id="ws_abc123"))
 
     # Get project details
     project = client.get_project("proj_abc123")
