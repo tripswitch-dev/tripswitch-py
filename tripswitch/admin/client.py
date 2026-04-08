@@ -139,7 +139,7 @@ class AdminClient:
     ) -> ListProjectsResponse:
         """List all projects in the org."""
         query: dict[str, str] | None = None
-        if workspace_id:
+        if workspace_id is not None:
             query = {"workspace_id": workspace_id}
         data = self._do("GET", "/v1/projects", query=query, options=options)
         return ListProjectsResponse._from_dict(data)

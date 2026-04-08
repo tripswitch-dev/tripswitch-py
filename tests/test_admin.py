@@ -276,6 +276,19 @@ class TestAdminClientProjects:
         assert result.count == 2
 
     @respx.mock
+    def test_list_projects_with_workspace_id(self):
+        route = respx.get(f"{BASE}/v1/projects").mock(
+            return_value=httpx.Response(200, json={
+                "projects": [{"project_id": "p1", "name": "A"}],
+                "count": 1,
+            })
+        )
+        client = AdminClient(api_key="k")
+        result = client.list_projects(workspace_id="ws_1")
+        assert len(result.projects) == 1
+        assert route.calls[0].request.url.params["workspace_id"] == "ws_1"
+
+    @respx.mock
     def test_get_project(self):
         respx.get(f"{BASE}/v1/projects/p1").mock(
             return_value=httpx.Response(200, json={

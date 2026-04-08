@@ -26,9 +26,11 @@ from tripswitch.admin import (
     BreakerOp,
     CreateBreakerInput,
     CreateProjectInput,
+    CreateWorkspaceInput,
     ListEventsParams,
     ListParams,
     UpdateBreakerInput,
+    UpdateWorkspaceInput,
 )
 from tripswitch.errors import NotFoundError
 
@@ -55,6 +57,53 @@ def _make_client(cfg: dict[str, str]) -> AdminClient:
         api_key=cfg["api_key"],
         base_url=cfg["base_url"],
     )
+
+
+# ── Workspaces ───────────────────────────────────────────────────────────
+
+
+def test_integration_workspace_crud():
+    cfg = _load_config()
+    _skip_if_no_env(cfg)
+
+    ws_name = f"integration-test-ws-{time.time_ns()}"
+    ws_slug = f"int-test-{time.time_ns()}"
+
+    with _make_client(cfg) as client:
+        # Create
+        ws = client.create_workspace(
+            CreateWorkspaceInput(name=ws_name, slug=ws_slug),
+        )
+        assert ws.name == ws_name
+        assert ws.slug == ws_slug
+
+        try:
+            # Read
+            fetched = client.get_workspace(ws.id)
+            assert fetched.name == ws_name
+
+            # Update
+            updated = client.update_workspace(
+                ws.id, UpdateWorkspaceInput(name=f"{ws_name}-renamed"),
+            )
+            assert updated.name == f"{ws_name}-renamed"
+
+            # List
+            result = client.list_workspaces()
+            assert any(w.id == ws.id for w in result.workspaces)
+
+            # Delete
+            client.delete_workspace(ws.id)
+
+            # Verify deletion
+            with pytest.raises(NotFoundError):
+                client.get_workspace(ws.id)
+        except Exception:
+            try:
+                client.delete_workspace(ws.id)
+            except Exception:
+                pass
+            raise
 
 
 # ── Projects ────────────────────────────────────────────────────────────
