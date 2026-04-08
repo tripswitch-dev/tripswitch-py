@@ -26,9 +26,11 @@ from tripswitch.admin import (
     BreakerOp,
     CreateBreakerInput,
     CreateProjectInput,
+    CreateWorkspaceInput,
     ListEventsParams,
     ListParams,
     UpdateBreakerInput,
+    UpdateWorkspaceInput,
 )
 from tripswitch.errors import NotFoundError
 
@@ -40,6 +42,7 @@ def _load_config() -> dict[str, str]:
     return {
         "api_key": os.environ.get("TRIPSWITCH_API_KEY", ""),
         "project_id": os.environ.get("TRIPSWITCH_PROJECT_ID", ""),
+        "workspace_id": os.environ.get("TRIPSWITCH_WORKSPACE_ID", ""),
         "base_url": os.environ.get("TRIPSWITCH_BASE_URL", "https://api.tripswitch.dev"),
     }
 
@@ -54,6 +57,56 @@ def _make_client(cfg: dict[str, str]) -> AdminClient:
         api_key=cfg["api_key"],
         base_url=cfg["base_url"],
     )
+
+
+# ── Workspaces ───────────────────────────────────────────────────────────
+
+
+def test_integration_workspace_crud():
+    cfg = _load_config()
+    _skip_if_no_env(cfg)
+
+    ts = time.time_ns()
+    ws_name = f"integration-test-ws-{ts}"
+    ws_slug = f"int-test-{ts}"
+
+    with _make_client(cfg) as client:
+        # Create
+        ws = client.create_workspace(
+            CreateWorkspaceInput(name=ws_name, slug=ws_slug),
+        )
+        assert ws.name == ws_name
+        assert ws.slug == ws_slug
+        current_name = ws_name
+
+        try:
+            # Read
+            fetched = client.get_workspace(ws.id)
+            assert fetched.name == ws_name
+
+            # Update
+            current_name = f"{ws_name}-renamed"
+            updated = client.update_workspace(
+                ws.id, UpdateWorkspaceInput(name=current_name),
+            )
+            assert updated.name == current_name
+
+            # List
+            result = client.list_workspaces()
+            assert any(w.id == ws.id for w in result.workspaces)
+
+            # Delete
+            client.delete_workspace(ws.id, confirm_name=current_name)
+
+            # Verify deletion
+            with pytest.raises(NotFoundError):
+                client.get_workspace(ws.id)
+        except Exception:
+            try:
+                client.delete_workspace(ws.id, confirm_name=current_name)
+            except Exception:
+                pass
+            raise
 
 
 # ── Projects ────────────────────────────────────────────────────────────
@@ -71,18 +124,22 @@ def test_integration_get_project():
 def test_integration_project_crud():
     cfg = _load_config()
     _skip_if_no_env(cfg)
+    if not cfg["workspace_id"]:
+        pytest.skip("TRIPSWITCH_WORKSPACE_ID must be set")
 
     project_name = f"integration-test-project-{time.time_ns()}"
 
     with _make_client(cfg) as client:
         # Create
-        project = client.create_project(CreateProjectInput(name=project_name))
+        project = client.create_project(
+            CreateProjectInput(name=project_name, workspace_id=cfg["workspace_id"]),
+        )
         assert project.name == project_name
 
         try:
             # List — verify it shows up
-            projects = client.list_projects()
-            assert any(p.id == project.id for p in projects)
+            result = client.list_projects()
+            assert any(p.id == project.id for p in result.projects)
 
             # Delete
             client.delete_project(project.id, confirm_name=project_name)

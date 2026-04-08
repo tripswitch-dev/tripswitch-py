@@ -30,12 +30,15 @@ from tripswitch.admin.types import (
     CreateProjectKeyInput,
     CreateProjectKeyResponse,
     CreateRouterInput,
+    CreateWorkspaceInput,
     Event,
     HalfOpenPolicy,
     IngestSecretRotation,
     LinkBreakerInput,
     ListEventsParams,
     ListParams,
+    ListProjectsResponse,
+    ListWorkspacesResponse,
     NotificationChannel,
     NotificationChannelType,
     NotificationEventType,
@@ -49,6 +52,8 @@ from tripswitch.admin.types import (
     UpdateNotificationChannelInput,
     UpdateProjectInput,
     UpdateRouterInput,
+    UpdateWorkspaceInput,
+    Workspace,
 )
 
 __all__ = [
@@ -71,7 +76,10 @@ __all__ = [
     "ProjectKey",
     "Router",
     "CreateProjectKeyResponse",
+    "ListProjectsResponse",
+    "ListWorkspacesResponse",
     "RequestOptions",
+    "Workspace",
     # Input types
     "BatchGetBreakerStatesInput",
     "CreateBreakerInput",
@@ -79,6 +87,7 @@ __all__ = [
     "CreateProjectInput",
     "CreateProjectKeyInput",
     "CreateRouterInput",
+    "CreateWorkspaceInput",
     "LinkBreakerInput",
     "ListEventsParams",
     "ListParams",
@@ -87,4 +96,5 @@ __all__ = [
     "UpdateNotificationChannelInput",
     "UpdateProjectInput",
     "UpdateRouterInput",
+    "UpdateWorkspaceInput",
 ]

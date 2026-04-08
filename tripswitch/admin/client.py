@@ -29,11 +29,14 @@ from tripswitch.admin.types import (
     CreateProjectKeyInput,
     CreateProjectKeyResponse,
     CreateRouterInput,
+    CreateWorkspaceInput,
     Event,
     IngestSecretRotation,
     LinkBreakerInput,
     ListEventsParams,
     ListParams,
+    ListProjectsResponse,
+    ListWorkspacesResponse,
     NotificationChannel,
     Project,
     ProjectKey,
@@ -44,6 +47,8 @@ from tripswitch.admin.types import (
     UpdateNotificationChannelInput,
     UpdateProjectInput,
     UpdateRouterInput,
+    UpdateWorkspaceInput,
+    Workspace,
 )
 
 _DEFAULT_BASE_URL = "https://api.tripswitch.dev"
@@ -83,14 +88,68 @@ class AdminClient:
     def __exit__(self, *exc: object) -> None:
         self.close()
 
+    # ── Workspaces ────────────────────────────────────────────────────────
+
+    def list_workspaces(
+        self, *, options: RequestOptions | None = None,
+    ) -> ListWorkspacesResponse:
+        """List all workspaces in the org."""
+        data = self._do("GET", "/v1/workspaces", options=options)
+        return ListWorkspacesResponse._from_dict(data)
+
+    def create_workspace(
+        self, workspace: CreateWorkspaceInput,
+        *, options: RequestOptions | None = None,
+    ) -> Workspace:
+        """Create a new workspace."""
+        data = self._do(
+            "POST", "/v1/workspaces", body=workspace._to_dict(), options=options,
+        )
+        return Workspace._from_dict(data)
+
+    def get_workspace(
+        self, workspace_id: str, *, options: RequestOptions | None = None,
+    ) -> Workspace:
+        """Get a workspace by ID."""
+        data = self._do("GET", f"/v1/workspaces/{workspace_id}", options=options)
+        return Workspace._from_dict(data)
+
+    def update_workspace(
+        self, workspace_id: str, workspace: UpdateWorkspaceInput,
+        *, options: RequestOptions | None = None,
+    ) -> Workspace:
+        """Update a workspace's settings."""
+        data = self._do(
+            "PATCH", f"/v1/workspaces/{workspace_id}",
+            body=workspace._to_dict(), options=options,
+        )
+        return Workspace._from_dict(data)
+
+    def delete_workspace(
+        self, workspace_id: str, *, confirm_name: str,
+        options: RequestOptions | None = None,
+    ) -> None:
+        """Delete a workspace.
+
+        Requires *confirm_name* to match the workspace's actual name as a
+        safety guard against accidental deletion.
+        """
+        ws = self.get_workspace(workspace_id, options=options)
+        self._confirm_name("workspace", ws.name, confirm_name)
+        self._do("DELETE", f"/v1/workspaces/{workspace_id}", options=options)
+
     # ── Projects ─────────────────────────────────────────────────────────
 
     def list_projects(
-        self, *, options: RequestOptions | None = None,
-    ) -> list[Project]:
+        self, *, workspace_id: str | None = None,
+        options: RequestOptions | None = None,
+    ) -> ListProjectsResponse:
         """List all projects in the org."""
-        data = self._do("GET", "/v1/projects", options=options)
-        return [Project._from_dict(p) for p in data.get("projects", [])]
+        query: dict[str, str] | None = None
+        if workspace_id is not None:
+            query = {"workspace_id": workspace_id}
+        data = self._do("GET", "/v1/projects", query=query, options=options)
+        return ListProjectsResponse._from_dict(data)
 
     def get_project(
         self, project_id: str, *, options: RequestOptions | None = None,
@@ -130,11 +189,7 @@ class AdminClient:
         safety guard against accidental deletion.
         """
         proj = self.get_project(project_id, options=options)
-        if proj.name != confirm_name:
-            raise ValueError(
-                f"project name {proj.name!r} does not match "
-                f"confirmation {confirm_name!r}"
-            )
+        self._confirm_name("project", proj.name, confirm_name)
         self._do("DELETE", f"/v1/projects/{project_id}", options=options)
 
     def rotate_ingest_secret(
@@ -517,6 +572,17 @@ class AdminClient:
             "DELETE", f"/v1/projects/{project_id}/keys/{key_id}",
             options=options,
         )
+
+    # ── Internal ─────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _confirm_name(kind: str, actual: str, expected: str) -> None:
+        """Raise if *actual* does not match *expected*."""
+        if actual != expected:
+            raise ValueError(
+                f"{kind} name {actual!r} does not match "
+                f"confirmation {expected!r}"
+            )
 
     # ── Internal: HTTP ───────────────────────────────────────────────────
 

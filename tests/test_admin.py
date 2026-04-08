@@ -19,11 +19,14 @@ from tripswitch.admin import (
     CreateProjectInput,
     CreateProjectKeyInput,
     CreateRouterInput,
+    CreateWorkspaceInput,
     Event,
     HalfOpenPolicy,
     LinkBreakerInput,
     ListEventsParams,
     ListParams,
+    ListProjectsResponse,
+    ListWorkspacesResponse,
     NotificationChannel,
     NotificationChannelType,
     NotificationEventType,
@@ -34,6 +37,8 @@ from tripswitch.admin import (
     UpdateBreakerInput,
     UpdateProjectInput,
     UpdateRouterInput,
+    UpdateWorkspaceInput,
+    Workspace,
 )
 from tripswitch.errors import (
     NotFoundError,
@@ -43,6 +48,18 @@ from tripswitch.errors import (
     UnauthorizedError,
     ValidationError,
 )
+
+
+# ── Public API ───────────────────────────────────────────────────────────
+
+
+def test_public_api_imports():
+    from tripswitch.admin import (
+        Workspace,
+        CreateWorkspaceInput,
+        ListProjectsResponse,
+        ListWorkspacesResponse,
+    )
 
 
 # ── Type serialization ───────────────────────────────────────────────────
@@ -258,14 +275,41 @@ class TestAdminClientProjects:
                 "projects": [
                     {"project_id": "p1", "name": "Alpha"},
                     {"project_id": "p2", "name": "Beta"},
-                ]
+                ],
+                "count": 2,
             })
         )
         client = AdminClient(api_key="k")
-        projects = client.list_projects()
-        assert len(projects) == 2
-        assert projects[0].id == "p1"
-        assert projects[1].name == "Beta"
+        result = client.list_projects()
+        assert isinstance(result, ListProjectsResponse)
+        assert len(result.projects) == 2
+        assert result.projects[0].id == "p1"
+        assert result.projects[1].name == "Beta"
+        assert result.count == 2
+
+    @respx.mock
+    def test_list_projects_sends_no_query_by_default(self):
+        route = respx.get(f"{BASE}/v1/projects").mock(
+            return_value=httpx.Response(200, json={
+                "projects": [], "count": 0,
+            })
+        )
+        client = AdminClient(api_key="k")
+        client.list_projects()
+        assert not route.calls[0].request.url.params
+
+    @respx.mock
+    def test_list_projects_with_workspace_id(self):
+        route = respx.get(f"{BASE}/v1/projects").mock(
+            return_value=httpx.Response(200, json={
+                "projects": [{"project_id": "p1", "name": "A"}],
+                "count": 1,
+            })
+        )
+        client = AdminClient(api_key="k")
+        result = client.list_projects(workspace_id="ws_1")
+        assert len(result.projects) == 1
+        assert route.calls[0].request.url.params["workspace_id"] == "ws_1"
 
     @respx.mock
     def test_get_project(self):
@@ -282,14 +326,17 @@ class TestAdminClientProjects:
 
     @respx.mock
     def test_create_project(self):
-        respx.post(f"{BASE}/v1/projects").mock(
+        route = respx.post(f"{BASE}/v1/projects").mock(
             return_value=httpx.Response(200, json={
-                "project_id": "p_new", "name": "New"
+                "project_id": "p_new", "name": "New", "workspace_id": "ws_1",
             })
         )
         client = AdminClient(api_key="k")
-        p = client.create_project(CreateProjectInput(name="New"))
+        p = client.create_project(CreateProjectInput(name="New", workspace_id="ws_1"))
         assert p.name == "New"
+        assert p.workspace_id == "ws_1"
+        body = json.loads(route.calls[0].request.content)
+        assert body == {"name": "New", "workspace_id": "ws_1"}
 
     @respx.mock
     def test_delete_project_requires_confirmation(self):
@@ -298,9 +345,13 @@ class TestAdminClientProjects:
                 "project_id": "p1", "name": "Prod"
             })
         )
+        delete_route = respx.delete(f"{BASE}/v1/projects/p1").mock(
+            return_value=httpx.Response(204)
+        )
         client = AdminClient(api_key="k")
         with pytest.raises(ValueError, match="does not match"):
             client.delete_project("p1", confirm_name="wrong-name")
+        assert not delete_route.called
 
     @respx.mock
     def test_delete_project_success(self):
@@ -471,4 +522,156 @@ class TestAdminClientKeys:
         )
         client = AdminClient(api_key="k")
         client.delete_project_key("p1", "key_1")
+        assert route.called
+
+
+# ── Workspace types ──────────────────────────────────────────────────────
+
+
+class TestWorkspaceDeserialization:
+    def test_from_dict(self):
+        d = {
+            "id": "ws_123",
+            "name": "My Workspace",
+            "slug": "my-workspace",
+            "org_id": "org_abc",
+            "inserted_at": "2024-06-01T12:00:00Z",
+        }
+        w = Workspace._from_dict(d)
+        assert w.id == "ws_123"
+        assert w.name == "My Workspace"
+        assert w.slug == "my-workspace"
+        assert w.org_id == "org_abc"
+        assert w.inserted_at is not None
+
+    def test_from_dict_minimal(self):
+        w = Workspace._from_dict({"id": "ws_1", "name": "W", "slug": "w"})
+        assert w.id == "ws_1"
+        assert w.org_id == ""
+        assert w.inserted_at is None
+
+    def test_from_dict_missing_id(self):
+        w = Workspace._from_dict({"name": "W", "slug": "w"})
+        assert w.id == ""
+
+
+class TestListWorkspacesResponse:
+    def test_from_dict_ignores_extra_keys(self):
+        """Regression guard: API doesn't return count, but handle it gracefully."""
+        d = {
+            "workspaces": [{"id": "ws_1", "name": "A", "slug": "a"}],
+            "count": 99,
+        }
+        resp = ListWorkspacesResponse._from_dict(d)
+        assert len(resp.workspaces) == 1
+        assert not hasattr(resp, "count")
+
+
+class TestCreateWorkspaceInput:
+    def test_to_dict(self):
+        inp = CreateWorkspaceInput(name="Dev", slug="dev")
+        assert inp._to_dict() == {"name": "Dev", "slug": "dev"}
+
+
+class TestUpdateWorkspaceInput:
+    def test_empty(self):
+        assert UpdateWorkspaceInput()._to_dict() == {}
+
+    def test_partial(self):
+        inp = UpdateWorkspaceInput(name="Renamed")
+        assert inp._to_dict() == {"name": "Renamed"}
+
+
+# ── Workspace client calls ───────────────────────────────────────────────
+
+
+class TestAdminClientWorkspaces:
+    @respx.mock
+    def test_list_workspaces_sends_no_query(self):
+        route = respx.get(f"{BASE}/v1/workspaces").mock(
+            return_value=httpx.Response(200, json={"workspaces": []})
+        )
+        client = AdminClient(api_key="k")
+        client.list_workspaces()
+        assert not route.calls[0].request.url.params
+
+    @respx.mock
+    def test_list_workspaces(self):
+        respx.get(f"{BASE}/v1/workspaces").mock(
+            return_value=httpx.Response(200, json={
+                "workspaces": [
+                    {"id": "ws_1", "name": "Alpha", "slug": "alpha"},
+                    {"id": "ws_2", "name": "Beta", "slug": "beta"},
+                ]
+            })
+        )
+        client = AdminClient(api_key="k")
+        result = client.list_workspaces()
+        assert isinstance(result, ListWorkspacesResponse)
+        assert isinstance(result.workspaces, tuple)
+        assert len(result.workspaces) == 2
+        assert result.workspaces[0].id == "ws_1"
+        assert result.workspaces[1].slug == "beta"
+
+    @respx.mock
+    def test_create_workspace(self):
+        respx.post(f"{BASE}/v1/workspaces").mock(
+            return_value=httpx.Response(200, json={
+                "id": "ws_new", "name": "New", "slug": "new",
+            })
+        )
+        client = AdminClient(api_key="k")
+        w = client.create_workspace(CreateWorkspaceInput(name="New", slug="new"))
+        assert w.id == "ws_new"
+        assert w.slug == "new"
+
+    @respx.mock
+    def test_get_workspace(self):
+        respx.get(f"{BASE}/v1/workspaces/ws_1").mock(
+            return_value=httpx.Response(200, json={
+                "id": "ws_1", "name": "Alpha", "slug": "alpha",
+            })
+        )
+        client = AdminClient(api_key="k")
+        w = client.get_workspace("ws_1")
+        assert w.name == "Alpha"
+
+    @respx.mock
+    def test_update_workspace(self):
+        respx.patch(f"{BASE}/v1/workspaces/ws_1").mock(
+            return_value=httpx.Response(200, json={
+                "id": "ws_1", "name": "Renamed", "slug": "alpha",
+            })
+        )
+        client = AdminClient(api_key="k")
+        w = client.update_workspace("ws_1", UpdateWorkspaceInput(name="Renamed"))
+        assert w.name == "Renamed"
+
+    @respx.mock
+    def test_delete_workspace_requires_confirmation(self):
+        respx.get(f"{BASE}/v1/workspaces/ws_1").mock(
+            return_value=httpx.Response(200, json={
+                "id": "ws_1", "name": "Alpha", "slug": "alpha",
+            })
+        )
+        delete_route = respx.delete(f"{BASE}/v1/workspaces/ws_1").mock(
+            return_value=httpx.Response(204)
+        )
+        client = AdminClient(api_key="k")
+        with pytest.raises(ValueError, match="does not match"):
+            client.delete_workspace("ws_1", confirm_name="wrong-name")
+        assert not delete_route.called
+
+    @respx.mock
+    def test_delete_workspace_success(self):
+        respx.get(f"{BASE}/v1/workspaces/ws_1").mock(
+            return_value=httpx.Response(200, json={
+                "id": "ws_1", "name": "Alpha", "slug": "alpha",
+            })
+        )
+        route = respx.delete(f"{BASE}/v1/workspaces/ws_1").mock(
+            return_value=httpx.Response(204)
+        )
+        client = AdminClient(api_key="k")
+        client.delete_workspace("ws_1", confirm_name="Alpha")
         assert route.called

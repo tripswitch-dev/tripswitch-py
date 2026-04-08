@@ -104,6 +104,76 @@ class ListParams:
     limit: int = 0
 
 
+# ── Workspaces ────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class Workspace:
+    """A Tripswitch workspace."""
+
+    id: str
+    name: str
+    slug: str
+    org_id: str = ""
+    inserted_at: datetime | None = None
+
+    @classmethod
+    def _from_dict(cls, d: dict[str, Any]) -> Workspace:
+        # The workspace API consistently uses "id" — no "workspace_id"
+        # dual-key unlike the project API (which returns "project_id").
+        return cls(
+            id=d.get("id", ""),
+            name=d.get("name", ""),
+            slug=d.get("slug", ""),
+            org_id=d.get("org_id", ""),
+            inserted_at=_parse_dt(d, "inserted_at"),
+        )
+
+
+@dataclass
+class CreateWorkspaceInput:
+    """Fields for creating a workspace."""
+
+    name: str
+    slug: str
+
+    def _to_dict(self) -> dict[str, Any]:
+        return {"name": self.name, "slug": self.slug}
+
+
+@dataclass
+class UpdateWorkspaceInput:
+    """Fields for updating a workspace.  Only set fields are sent."""
+
+    name: str | None = None
+    slug: str | None = None
+
+    def _to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
+        _set_optional(d, "name", self.name)
+        _set_optional(d, "slug", self.slug)
+        return d
+
+
+@dataclass(frozen=True)
+class ListWorkspacesResponse:
+    """Response from listing workspaces.
+
+    Unlike :class:`ListProjectsResponse`, the workspace list endpoint does
+    not return a ``count`` field — this matches the upstream API spec.
+    """
+
+    workspaces: tuple[Workspace, ...]
+
+    @classmethod
+    def _from_dict(cls, d: dict[str, Any]) -> ListWorkspacesResponse:
+        return cls(
+            workspaces=tuple(
+                Workspace._from_dict(w) for w in d.get("workspaces", [])
+            ),
+        )
+
+
 # ── Projects ─────────────────────────────────────────────────────────────
 
 
@@ -116,6 +186,7 @@ class Project:
     slack_webhook_url: str = ""
     trace_id_url_template: str = ""
     enable_signed_ingest: bool = False
+    workspace_id: str = ""
 
     @classmethod
     def _from_dict(cls, d: dict[str, Any]) -> Project:
@@ -125,6 +196,7 @@ class Project:
             slack_webhook_url=d.get("slack_webhook_url", ""),
             trace_id_url_template=d.get("trace_id_url_template", ""),
             enable_signed_ingest=d.get("enable_signed_ingest", False),
+            workspace_id=d.get("workspace_id", ""),
         )
 
 
@@ -133,9 +205,29 @@ class CreateProjectInput:
     """Fields for creating a project."""
 
     name: str
+    workspace_id: str | None = None
 
     def _to_dict(self) -> dict[str, Any]:
-        return {"name": self.name}
+        d: dict[str, Any] = {"name": self.name}
+        _set_optional(d, "workspace_id", self.workspace_id)
+        return d
+
+
+@dataclass(frozen=True)
+class ListProjectsResponse:
+    """Response from listing projects."""
+
+    projects: tuple[Project, ...]
+    count: int = 0
+
+    @classmethod
+    def _from_dict(cls, d: dict[str, Any]) -> ListProjectsResponse:
+        return cls(
+            projects=tuple(
+                Project._from_dict(p) for p in d.get("projects", [])
+            ),
+            count=d.get("count", 0),
+        )
 
 
 @dataclass
@@ -149,14 +241,10 @@ class UpdateProjectInput:
 
     def _to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {}
-        if self.name is not None:
-            d["name"] = self.name
-        if self.slack_webhook_url is not None:
-            d["slack_webhook_url"] = self.slack_webhook_url
-        if self.trace_id_url_template is not None:
-            d["trace_id_url_template"] = self.trace_id_url_template
-        if self.enable_signed_ingest is not None:
-            d["enable_signed_ingest"] = self.enable_signed_ingest
+        _set_optional(d, "name", self.name)
+        _set_optional(d, "slack_webhook_url", self.slack_webhook_url)
+        _set_optional(d, "trace_id_url_template", self.trace_id_url_template)
+        _set_optional(d, "enable_signed_ingest", self.enable_signed_ingest)
         return d
 
 
@@ -657,6 +745,7 @@ def _parse_dt(d: dict[str, Any], key: str) -> datetime | None:
     if not raw:
         return None
     try:
-        return datetime.fromisoformat(raw)
+        # Python <3.11 doesn't accept "Z" in fromisoformat
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return None
