@@ -464,8 +464,10 @@ class TestAdminClientRouters:
             return_value=httpx.Response(204)
         )
         client = AdminClient(api_key="k")
-        client.link_breaker("p1", "rtr_1", LinkBreakerInput(breaker_id="b1"))
+        client.link_breaker("p1", "rtr_1", LinkBreakerInput(breaker_ids=["b1", "b2"]))
         assert route.called
+        body = json.loads(route.calls[0].request.content)
+        assert body == {"breaker_ids": ["b1", "b2"]}
 
     @respx.mock
     def test_unlink_breaker(self):

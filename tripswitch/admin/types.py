@@ -548,10 +548,10 @@ class UpdateRouterInput:
 class LinkBreakerInput:
     """Parameters for linking a breaker to a router."""
 
-    breaker_id: str
+    breaker_ids: list[str]
 
     def _to_dict(self) -> dict[str, Any]:
-        return {"breaker_id": self.breaker_id}
+        return {"breaker_ids": self.breaker_ids}
 
 
 # ── Notification channels ────────────────────────────────────────────────
