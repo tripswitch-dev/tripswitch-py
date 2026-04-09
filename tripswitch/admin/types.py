@@ -546,12 +546,20 @@ class UpdateRouterInput:
 
 @dataclass
 class LinkBreakerInput:
-    """Parameters for linking a breaker to a router."""
+    """Parameters for linking one or more breakers to a router atomically.
+
+    Note: the corresponding unlink operation (``AdminClient.unlink_breaker``)
+    removes a single breaker at a time via its ID.
+    """
 
     breaker_ids: list[str]
 
+    def __post_init__(self) -> None:
+        if not self.breaker_ids:
+            raise ValueError("breaker_ids must contain at least one ID")
+
     def _to_dict(self) -> dict[str, Any]:
-        return {"breaker_ids": self.breaker_ids}
+        return {"breaker_ids": list(self.breaker_ids)}
 
 
 # ── Notification channels ────────────────────────────────────────────────

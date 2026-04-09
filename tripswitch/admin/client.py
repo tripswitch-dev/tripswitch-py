@@ -373,7 +373,7 @@ class AdminClient:
         self, project_id: str, router_id: str, link: LinkBreakerInput,
         *, options: RequestOptions | None = None,
     ) -> None:
-        """Link a breaker to a router."""
+        """Link one or more breakers to a router atomically."""
         self._do(
             "POST",
             f"/v1/projects/{project_id}/routers/{router_id}/breakers",
@@ -384,7 +384,10 @@ class AdminClient:
         self, project_id: str, router_id: str, breaker_id: str,
         *, options: RequestOptions | None = None,
     ) -> None:
-        """Remove a breaker from a router."""
+        """Remove a single breaker from a router.
+
+        To unlink multiple breakers, call this method once per breaker ID.
+        """
         self._do(
             "DELETE",
             f"/v1/projects/{project_id}/routers/{router_id}/breakers/{breaker_id}",
