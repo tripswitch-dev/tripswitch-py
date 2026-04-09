@@ -459,13 +459,30 @@ class TestAdminClientRouters:
         assert r.name == "updated"
 
     @respx.mock
-    def test_link_breaker(self):
+    def test_link_breaker_single(self):
         route = respx.post(f"{BASE}/v1/projects/p1/routers/rtr_1/breakers").mock(
             return_value=httpx.Response(204)
         )
         client = AdminClient(api_key="k")
-        client.link_breaker("p1", "rtr_1", LinkBreakerInput(breaker_id="b1"))
+        client.link_breaker("p1", "rtr_1", LinkBreakerInput(breaker_ids=["b1"]))
         assert route.called
+        body = json.loads(route.calls[0].request.content)
+        assert body == {"breaker_ids": ["b1"]}
+
+    @respx.mock
+    def test_link_breaker_multiple(self):
+        route = respx.post(f"{BASE}/v1/projects/p1/routers/rtr_1/breakers").mock(
+            return_value=httpx.Response(204)
+        )
+        client = AdminClient(api_key="k")
+        client.link_breaker("p1", "rtr_1", LinkBreakerInput(breaker_ids=["b1", "b2"]))
+        assert route.called
+        body = json.loads(route.calls[0].request.content)
+        assert body == {"breaker_ids": ["b1", "b2"]}
+
+    def test_link_breaker_empty_raises(self):
+        with pytest.raises(ValueError, match="breaker_ids must contain at least one ID"):
+            LinkBreakerInput(breaker_ids=[])
 
     @respx.mock
     def test_unlink_breaker(self):
@@ -474,7 +491,7 @@ class TestAdminClientRouters:
         ).mock(return_value=httpx.Response(204))
         client = AdminClient(api_key="k")
         client.unlink_breaker("p1", "rtr_1", "b1")
-        assert route.called
+        assert str(route.calls[0].request.url).endswith("/routers/rtr_1/breakers/b1")
 
 
 class TestAdminClientNotifications:
