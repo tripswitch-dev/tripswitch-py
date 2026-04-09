@@ -647,6 +647,12 @@ class Client:
     # ── Internal: sample buffer ──────────────────────────────────────────
 
     def _enqueue(self, sample: _Sample) -> None:
+        if not self._connected:
+            logger.warning(
+                "tripswitch: sample dropped — connect() has not been called. "
+                "Use the client as a context manager or call connect() explicitly."
+            )
+            return
         try:
             self._queue.put_nowait(sample)
         except queue.Full:
@@ -816,7 +822,9 @@ class Client:
             headers["X-EB-Signature"] = signature
 
         for attempt in range(len(_BACKOFF_SCHEDULE) + 1):
-            if self._shutdown.is_set():
+            # Allow attempt 0 to proceed even during shutdown so that samples
+            # buffered at close() time are not silently discarded.
+            if attempt > 0 and self._shutdown.is_set():
                 with self._dropped_lock:
                     self._dropped_samples += len(batch)
                 return

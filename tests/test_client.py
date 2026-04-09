@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import pytest
 
+import logging
+
+import tripswitch
 from tripswitch import BreakerMeta, BreakerStatus, RouterMeta
-from tripswitch.client import _Sample
+from tripswitch.client import Client, _Sample
 from tests.conftest import make_client, set_breaker_state
 
 
@@ -76,6 +79,27 @@ class TestMetadataCache:
         meta = c.get_routers_metadata()
         assert meta is not None
         assert meta[0].metadata["env"] == "prod"
+
+
+class TestNotConnected:
+    def test_enqueue_warns_when_not_connected(self, caplog):
+        c = Client("test-project")
+        assert c._connected is False
+
+        with caplog.at_level(logging.WARNING, logger="tripswitch.client"):
+            c.report(router_id="r", metric="m", value=1.0)
+
+        assert "connect()" in caplog.text
+        assert c._queue.empty()
+
+    def test_execute_warns_when_not_connected(self, caplog):
+        c = Client("test-project")
+
+        with caplog.at_level(logging.WARNING, logger="tripswitch.client"):
+            c.execute(lambda: None, router="r", metrics={"m": 1.0})
+
+        assert "connect()" in caplog.text
+        assert c._queue.empty()
 
 
 class TestReport:
