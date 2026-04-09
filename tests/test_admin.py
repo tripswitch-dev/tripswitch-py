@@ -421,7 +421,7 @@ class TestAdminClientRouters:
     @respx.mock
     def test_create_router(self):
         respx.post(f"{BASE}/v1/projects/p1/routers").mock(
-            return_value=httpx.Response(200, json={
+            return_value=httpx.Response(201, json={
                 "router": {"id": "rtr_1", "name": "main", "mode": "static", "enabled": True},
             })
         )
