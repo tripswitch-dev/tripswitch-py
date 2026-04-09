@@ -335,7 +335,7 @@ class AdminClient:
             "GET", f"/v1/projects/{project_id}/routers/{router_id}",
             options=options,
         )
-        return Router._from_dict(data)
+        return Router._from_dict(data.get("router", data))
 
     def create_router(
         self, project_id: str, router: CreateRouterInput,
@@ -346,7 +346,7 @@ class AdminClient:
             "POST", f"/v1/projects/{project_id}/routers",
             body=router._to_dict(), options=options,
         )
-        return Router._from_dict(data)
+        return Router._from_dict(data.get("router", data))
 
     def update_router(
         self, project_id: str, router_id: str, router: UpdateRouterInput,
@@ -357,7 +357,7 @@ class AdminClient:
             "PATCH", f"/v1/projects/{project_id}/routers/{router_id}",
             body=router._to_dict(), options=options,
         )
-        return Router._from_dict(data)
+        return Router._from_dict(data.get("router", data))
 
     def delete_router(
         self, project_id: str, router_id: str,

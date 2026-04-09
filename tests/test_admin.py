@@ -422,8 +422,7 @@ class TestAdminClientRouters:
     def test_create_router(self):
         respx.post(f"{BASE}/v1/projects/p1/routers").mock(
             return_value=httpx.Response(200, json={
-                "id": "rtr_1", "name": "main", "mode": "static",
-                "enabled": True,
+                "router": {"id": "rtr_1", "name": "main", "mode": "static", "enabled": True},
             })
         )
         client = AdminClient(api_key="k")
@@ -431,7 +430,33 @@ class TestAdminClientRouters:
             name="main", mode=RouterMode.STATIC,
         ))
         assert r.id == "rtr_1"
+        assert r.name == "main"
         assert r.mode == RouterMode.STATIC
+
+    @respx.mock
+    def test_get_router(self):
+        respx.get(f"{BASE}/v1/projects/p1/routers/rtr_1").mock(
+            return_value=httpx.Response(200, json={
+                "router": {"id": "rtr_1", "name": "main", "mode": "canary", "enabled": False},
+            })
+        )
+        client = AdminClient(api_key="k")
+        r = client.get_router("p1", "rtr_1")
+        assert r.id == "rtr_1"
+        assert r.name == "main"
+        assert r.mode == RouterMode.CANARY
+
+    @respx.mock
+    def test_update_router(self):
+        respx.patch(f"{BASE}/v1/projects/p1/routers/rtr_1").mock(
+            return_value=httpx.Response(200, json={
+                "router": {"id": "rtr_1", "name": "updated", "mode": "static", "enabled": True},
+            })
+        )
+        client = AdminClient(api_key="k")
+        r = client.update_router("p1", "rtr_1", UpdateRouterInput(name="updated"))
+        assert r.id == "rtr_1"
+        assert r.name == "updated"
 
     @respx.mock
     def test_link_breaker(self):
